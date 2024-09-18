@@ -1,13 +1,14 @@
 import torch
 from transformers import AutoModelForSpeechSeq2Seq, AutoProcessor, pipeline
-from datasets import load_dataset
+import librosa
 
-
+# Set device and model parameters
 device = "cuda:0" if torch.cuda.is_available() else "cpu"
 torch_dtype = torch.float16 if torch.cuda.is_available() else torch.float32
 
 model_id = "distil-whisper/distil-large-v3"
 
+# Load the model and processor
 model = AutoModelForSpeechSeq2Seq.from_pretrained(
     model_id, torch_dtype=torch_dtype, low_cpu_mem_usage=True, use_safetensors=True
 )
@@ -15,6 +16,7 @@ model.to(device)
 
 processor = AutoProcessor.from_pretrained(model_id)
 
+# Set up the pipeline
 pipe = pipeline(
     "automatic-speech-recognition",
     model=model,
@@ -25,23 +27,14 @@ pipe = pipeline(
     device=device,
 )
 
-# dataset = load_dataset("hf-internal-testing/librispeech_asr_dummy", "clean", split="validation")
+# Load and resample the audio to 16 kHz
+file_path = 'exp/recording2.m4a'  # Path to your .m4a file
+audio, sampling_rate = librosa.load(file_path, sr=16000)  # Resample to 16 kHz
 
-# sample = dataset[0]["audio"]
+# Ensure the audio is in a format the pipeline can process
+audio_input = {"array": audio, "sampling_rate": 16000}
 
-import librosa
-
-# Path to your .m4a file
-file_path = 'exp/recording2.m4a'  # Update this path to your m4a file
-
-# Load the audio file
-audio, sampling_rate = librosa.load(file_path, sr=None)
-
-# Print results
-print(f'Audio data: {audio}')
-print(f'Sampling rate: {sampling_rate}')
-
-
-result = pipe(audio)
+# Use the pipeline for speech recognition
+result = pipe(audio_input)
 print(result["text"])
 
